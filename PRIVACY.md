@@ -17,7 +17,7 @@ Copying uses the clipboard on your machine. Clearing comments deletes them from 
 
 ## Why it can run on every site
 
-The comment button, highlight, and note box have to appear on the page you are reviewing. That page can be any site, so the extension is allowed to run on all URLs. It does not read a page until you click Comment and choose a section.
+The floating dock, highlight, and note box have to appear on the page you are reviewing when you click the extension icon. That page can be any site, so the extension is allowed to run on all URLs. It does not read a page until you show the dock, click Comment, and choose a section.
 
 ## Contact
 
