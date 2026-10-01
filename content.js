@@ -5,6 +5,7 @@
   const KEY = "siteCommentsForAi";
   const DEVICE_KEY = "jamarkupDeviceId";
   const BATCH_KEY = "jamarkupBatchId";
+  const TOUR_KEY = "jamarkupTourDismissed";
   const TAGS = ["Copy", "Layout", "Bug", "Missing"];
   const SHORT_PROBLEM = 12;
   const host = document.createElement("div");
@@ -15,7 +16,7 @@
   shadow.innerHTML = `
     <style>
       * { box-sizing: border-box; }
-      .dock, .box, .hl, .count { all: initial; font-family: ui-sans-serif, system-ui, sans-serif; }
+      .dock, .box, .hl, .count, .tour { all: initial; font-family: ui-sans-serif, system-ui, sans-serif; }
       .dock {
         position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;
         display: none; align-items: center; gap: 6px;
@@ -74,6 +75,22 @@
       .hint.show { display: block; }
       .row { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
       .row button { padding: 8px 10px; }
+      .tour {
+        position: fixed; right: 16px; bottom: 72px; z-index: 2147483647;
+        width: 300px; display: none;
+        background: white; color: #1c1917; border-radius: 12px;
+        box-shadow: 0 16px 40px rgba(0,0,0,.22); padding: 14px 14px 12px;
+      }
+      .tour.visible { display: block; }
+      .tour h2 {
+        margin: 0 0 8px; font: 600 14px/1.3 system-ui, sans-serif; color: #1c1917;
+      }
+      .tour ol {
+        margin: 0 0 12px; padding-left: 18px;
+        font: 13px/1.45 system-ui, sans-serif; color: #44403c;
+      }
+      .tour li { margin: 0 0 4px; }
+      .tour .row { margin-top: 0; justify-content: flex-start; }
     </style>
     <div class="hl"></div>
     <div class="box">
@@ -104,6 +121,19 @@
       <button class="ghost" type="button" data-act="copy">Copy for AI</button>
       <button type="button" data-act="pick">Comment</button>
     </div>
+    <div class="tour" role="dialog" aria-label="Jamarkup quick tour">
+      <h2>Quick tour</h2>
+      <ol>
+        <li>Click <strong>Comment</strong></li>
+        <li>Click a section on the page</li>
+        <li>Fill Problem / Want / Why (optional chips)</li>
+        <li>Click <strong>Copy for AI</strong> and paste to your teammate or AI</li>
+      </ol>
+      <div class="row">
+        <button type="button" data-act="tour-got-it">Got it</button>
+        <button class="ghost" type="button" data-act="tour-later">Remind me later</button>
+      </div>
+    </div>
   `;
 
   const hl = shadow.querySelector(".hl");
@@ -120,6 +150,7 @@
   const copyBtn = shadow.querySelector('[data-act="copy"]');
   const clearBtn = shadow.querySelector('[data-act="clear"]');
   const saveBtn = shadow.querySelector('[data-act="save"]');
+  const tour = shadow.querySelector(".tour");
   let picking = false;
   let current = null;
   let dockVisible = false;
@@ -128,6 +159,7 @@
   let clearArmReset = null;
   let shortNudgeArmed = false;
   let saving = false;
+  let tourSessionHidden = false;
 
   function flashCopy(label) {
     if (copyBtnReset) clearTimeout(copyBtnReset);
@@ -144,6 +176,43 @@
     if (clearArmReset) {
       clearTimeout(clearArmReset);
       clearArmReset = null;
+    }
+  }
+
+  function hideTour() {
+    tour.classList.remove("visible");
+  }
+
+  async function dismissTourPermanent() {
+    tourSessionHidden = true;
+    hideTour();
+    try {
+      await chrome.storage.local.set({ [TOUR_KEY]: true });
+    } catch (err) {
+      // Extension context invalidated — ignore.
+    }
+  }
+
+  function dismissTourSession() {
+    tourSessionHidden = true;
+    hideTour();
+  }
+
+  async function maybeShowTour() {
+    if (!dockVisible || tourSessionHidden) {
+      hideTour();
+      return;
+    }
+    try {
+      const data = await chrome.storage.local.get(TOUR_KEY);
+      if (data[TOUR_KEY]) {
+        tourSessionHidden = true;
+        hideTour();
+        return;
+      }
+      tour.classList.add("visible");
+    } catch (err) {
+      hideTour();
     }
   }
 
@@ -246,8 +315,10 @@
     if (!visible) {
       cancelUi();
       resetClearArm();
+      hideTour();
     } else {
       refreshCount();
+      maybeShowTour();
     }
   }
 
@@ -331,8 +402,10 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    if (!picking && box.style.display !== "block") return;
+    const tourOpen = tour.classList.contains("visible");
+    if (!picking && box.style.display !== "block" && !tourOpen) return;
     event.preventDefault();
+    if (tourOpen) dismissTourSession();
     cancelUi();
   }, true);
 
@@ -382,6 +455,14 @@
       if (!picking) hl.style.display = "none";
     }
     if (act === "cancel") closeBox();
+    if (act === "tour-got-it") {
+      dismissTourPermanent();
+      return;
+    }
+    if (act === "tour-later") {
+      dismissTourSession();
+      return;
+    }
     if (act === "save") {
       if (!current || saving) return;
       const tags = selectedTags();
