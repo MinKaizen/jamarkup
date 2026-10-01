@@ -11,10 +11,17 @@
   shadow.innerHTML = `
     <style>
       * { box-sizing: border-box; }
-      .dock, .box, .hl { all: initial; font-family: ui-sans-serif, system-ui, sans-serif; }
+      .dock, .box, .hl, .count { all: initial; font-family: ui-sans-serif, system-ui, sans-serif; }
       .dock {
         position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;
-        display: flex; gap: 6px;
+        display: none; align-items: center; gap: 6px;
+      }
+      .dock.visible { display: flex; }
+      .count {
+        font: 12px/1 system-ui, sans-serif;
+        color: #57534e; background: white; border-radius: 999px;
+        padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.2);
+        white-space: nowrap;
       }
       button {
         font: 13px/1 system-ui, sans-serif;
@@ -22,6 +29,7 @@
         background: #1c1917; color: white; box-shadow: 0 6px 20px rgba(0,0,0,.2);
       }
       button.ghost { background: white; color: #1c1917; }
+      button.muted { background: #f5f5f4; color: #57534e; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
       .hl {
         position: fixed; pointer-events: none; z-index: 2147483646;
         border: 2px solid #0f766e; background: rgba(15,118,110,.12);
@@ -50,6 +58,8 @@
       </div>
     </div>
     <div class="dock">
+      <span class="count" data-count>0 comments</span>
+      <button class="muted" type="button" data-act="clear">Clear</button>
       <button class="ghost" type="button" data-act="copy">Copy for AI</button>
       <button type="button" data-act="pick">Comment</button>
     </div>
@@ -57,13 +67,19 @@
 
   const hl = shadow.querySelector(".hl");
   const box = shadow.querySelector(".box");
+  const dock = shadow.querySelector(".dock");
   const meta = shadow.querySelector(".meta");
   const textarea = shadow.querySelector("textarea");
+  const countEl = shadow.querySelector("[data-count]");
   const pickBtn = shadow.querySelector('[data-act="pick"]');
   const copyBtn = shadow.querySelector('[data-act="copy"]');
+  const clearBtn = shadow.querySelector('[data-act="clear"]');
   let picking = false;
   let current = null;
+  let dockVisible = false;
   let copyBtnReset = null;
+  let clearArmed = false;
+  let clearArmReset = null;
 
   function flashCopy(label) {
     if (copyBtnReset) clearTimeout(copyBtnReset);
@@ -74,8 +90,38 @@
     }, 1200);
   }
 
+  function resetClearArm() {
+    clearArmed = false;
+    clearBtn.textContent = "Clear";
+    if (clearArmReset) {
+      clearTimeout(clearArmReset);
+      clearArmReset = null;
+    }
+  }
+
   function own(node) {
     return node === host || host.contains(node);
+  }
+
+  async function refreshCount() {
+    try {
+      const data = await chrome.storage.local.get(KEY);
+      const n = (data[KEY] || []).length;
+      countEl.textContent = n + " comment" + (n === 1 ? "" : "s");
+    } catch (err) {
+      // Extension context invalidated — ignore.
+    }
+  }
+
+  function setDockVisible(visible) {
+    dockVisible = visible;
+    dock.classList.toggle("visible", visible);
+    if (!visible) {
+      cancelUi();
+      resetClearArm();
+    } else {
+      refreshCount();
+    }
   }
 
   function cssPath(el) {
@@ -193,6 +239,7 @@
   shadow.addEventListener("click", async (event) => {
     const act = event.target?.dataset?.act;
     if (act === "pick") {
+      resetClearArm();
       box.style.display = "none";
       picking = !picking;
       pickBtn.textContent = picking ? "Picking…" : "Comment";
@@ -202,38 +249,82 @@
     if (act === "save") {
       const comment = textarea.value.trim();
       if (!comment || !current) return;
-      const item = {
-        page: location.href,
-        selector: cssPath(current),
-        landmark: landmark(current),
-        text: (current.innerText || "").trim().replace(/\s+/g, " ").slice(0, 180),
-        classes: [...current.classList].slice(0, 6).join(" "),
-        html: snippet(current),
-        comment,
-        at: new Date().toISOString()
-      };
-      const data = await chrome.storage.local.get(KEY);
-      const items = data[KEY] || [];
-      items.push(item);
-      await chrome.storage.local.set({ [KEY]: items });
-      closeBox();
-      pickBtn.textContent = "Added " + items.length;
-      setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
+      try {
+        const item = {
+          page: location.href,
+          selector: cssPath(current),
+          landmark: landmark(current),
+          text: (current.innerText || "").trim().replace(/\s+/g, " ").slice(0, 180),
+          classes: [...current.classList].slice(0, 6).join(" "),
+          html: snippet(current),
+          comment,
+          at: new Date().toISOString()
+        };
+        const data = await chrome.storage.local.get(KEY);
+        const items = data[KEY] || [];
+        items.push(item);
+        await chrome.storage.local.set({ [KEY]: items });
+        closeBox();
+        pickBtn.textContent = "Added " + items.length;
+        setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
+        refreshCount();
+      } catch (err) {
+        console.warn("Jamarkup save failed", err);
+      }
     }
     if (act === "copy") {
-      const data = await chrome.storage.local.get(KEY);
-      const items = data[KEY] || [];
-      if (!items.length) {
-        flashCopy("Nothing yet");
-        return;
-      }
+      resetClearArm();
       try {
-        await navigator.clipboard.writeText(toMarkdown(items));
-        flashCopy("Copied " + items.length);
+        const data = await chrome.storage.local.get(KEY);
+        const items = data[KEY] || [];
+        if (!items.length) {
+          flashCopy("Nothing yet");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(toMarkdown(items));
+          flashCopy("Copied " + items.length);
+        } catch (err) {
+          flashCopy("Copy failed");
+          console.warn("Jamarkup clipboard write failed", err);
+        }
+        refreshCount();
       } catch (err) {
         flashCopy("Copy failed");
-        console.warn("Jamarkup clipboard write failed", err);
+        console.warn("Jamarkup copy failed", err);
+      }
+    }
+    if (act === "clear") {
+      if (!clearArmed) {
+        clearArmed = true;
+        clearBtn.textContent = "Clear?";
+        clearArmReset = setTimeout(resetClearArm, 2500);
+        return;
+      }
+      resetClearArm();
+      try {
+        await chrome.storage.local.set({ [KEY]: [] });
+        await refreshCount();
+        clearBtn.textContent = "Cleared";
+        setTimeout(() => { clearBtn.textContent = "Clear"; }, 1200);
+      } catch (err) {
+        console.warn("Jamarkup clear failed", err);
       }
     }
   });
+
+  try {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (!message || message.type !== "jamarkup-toggle") return;
+      try {
+        setDockVisible(!dockVisible);
+        sendResponse({ ok: true, visible: dockVisible });
+      } catch (err) {
+        sendResponse({ ok: false });
+      }
+      return true;
+    });
+  } catch (err) {
+    // Extension context may already be invalidated.
+  }
 })();

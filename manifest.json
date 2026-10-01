@@ -12,13 +12,15 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "Jamarkup",
-    "default_popup": "popup.html",
+    "default_title": "Toggle Jamarkup dock",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
