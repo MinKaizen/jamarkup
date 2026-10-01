@@ -34,6 +34,7 @@
       }
       button.ghost { background: white; color: #1c1917; }
       button.muted { background: #f5f5f4; color: #57534e; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+      button:disabled { opacity: 0.55; cursor: default; }
       .hl {
         position: fixed; pointer-events: none; z-index: 2147483646;
         border: 2px solid #0f766e; background: rgba(15,118,110,.12);
@@ -118,6 +119,7 @@
   const pickBtn = shadow.querySelector('[data-act="pick"]');
   const copyBtn = shadow.querySelector('[data-act="copy"]');
   const clearBtn = shadow.querySelector('[data-act="clear"]');
+  const saveBtn = shadow.querySelector('[data-act="save"]');
   let picking = false;
   let current = null;
   let dockVisible = false;
@@ -125,6 +127,7 @@
   let clearArmed = false;
   let clearArmReset = null;
   let shortNudgeArmed = false;
+  let saving = false;
 
   function flashCopy(label) {
     if (copyBtnReset) clearTimeout(copyBtnReset);
@@ -380,7 +383,7 @@
     }
     if (act === "cancel") closeBox();
     if (act === "save") {
-      if (!current) return;
+      if (!current || saving) return;
       const tags = selectedTags();
       const fields = fieldValues();
       const hasField = Boolean(fields.problem || fields.want || fields.why);
@@ -405,6 +408,8 @@
       const comment = assembleComment(fields);
       if (!comment) return;
 
+      saving = true;
+      saveBtn.disabled = true;
       try {
         const deviceId = await ensureDeviceId();
         const { items, batchId: existingBatch } = await loadPile();
@@ -432,6 +437,9 @@
         refreshCount();
       } catch (err) {
         console.warn("Jamarkup save failed", err);
+      } finally {
+        saving = false;
+        saveBtn.disabled = false;
       }
     }
     if (act === "copy") {
