@@ -5,6 +5,8 @@
   const KEY = "siteCommentsForAi";
   const DEVICE_KEY = "jamarkupDeviceId";
   const BATCH_KEY = "jamarkupBatchId";
+  const TAGS = ["Copy", "Layout", "Bug", "Missing"];
+  const SHORT_PROBLEM = 12;
   const host = document.createElement("div");
   host.setAttribute("data-site-comments-root", "1");
   const shadow = host.attachShadow({ mode: "open" });
@@ -42,18 +44,54 @@
         background: white; color: #1c1917; border-radius: 12px;
         box-shadow: 0 16px 40px rgba(0,0,0,.22); padding: 12px; display: none;
       }
-      textarea {
-        width: 100%; min-height: 88px; resize: vertical; font: 13px/1.4 system-ui, sans-serif;
-        border: 1px solid #e7e5e4; border-radius: 8px; padding: 8px;
-      }
       .meta { font-size: 11px; color: #78716c; margin: 0 0 8px; word-break: break-all; }
+      .chips {
+        display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px;
+      }
+      .chip {
+        font: 12px/1 system-ui, sans-serif;
+        border: 1px solid #e7e5e4; border-radius: 999px;
+        padding: 6px 10px; cursor: pointer;
+        background: #f5f5f4; color: #57534e;
+        box-shadow: none;
+      }
+      .chip.on {
+        background: #1c1917; color: white; border-color: #1c1917;
+      }
+      .fields { display: flex; flex-direction: column; gap: 6px; }
+      .fields label {
+        display: block; font: 11px/1.2 system-ui, sans-serif; color: #78716c; margin: 0;
+      }
+      .fields textarea {
+        width: 100%; min-height: 44px; resize: vertical; font: 13px/1.4 system-ui, sans-serif;
+        border: 1px solid #e7e5e4; border-radius: 8px; padding: 8px;
+        color: #1c1917; background: white;
+      }
+      .hint {
+        display: none; margin: 8px 0 0; font: 11px/1.35 system-ui, sans-serif; color: #a16207;
+      }
+      .hint.show { display: block; }
       .row { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
       .row button { padding: 8px 10px; }
     </style>
     <div class="hl"></div>
     <div class="box">
       <p class="meta"></p>
-      <textarea placeholder="What should change in this section?"></textarea>
+      <div class="chips">
+        ${TAGS.map((tag) => `<button class="chip" type="button" data-tag="${tag}">${tag}</button>`).join("")}
+      </div>
+      <div class="fields">
+        <label>Problem
+          <textarea data-field="problem" placeholder="what's wrong or missing" rows="2"></textarea>
+        </label>
+        <label>Want
+          <textarea data-field="want" placeholder="what it should do or look like" rows="2"></textarea>
+        </label>
+        <label>Why
+          <textarea data-field="why" placeholder="optional context for priority" rows="2"></textarea>
+        </label>
+      </div>
+      <p class="hint" data-hint></p>
       <div class="row">
         <button class="ghost" type="button" data-act="cancel">Cancel</button>
         <button type="button" data-act="save">Add comment</button>
@@ -71,7 +109,11 @@
   const box = shadow.querySelector(".box");
   const dock = shadow.querySelector(".dock");
   const meta = shadow.querySelector(".meta");
-  const textarea = shadow.querySelector("textarea");
+  const problemEl = shadow.querySelector('[data-field="problem"]');
+  const wantEl = shadow.querySelector('[data-field="want"]');
+  const whyEl = shadow.querySelector('[data-field="why"]');
+  const hintEl = shadow.querySelector("[data-hint]");
+  const chipEls = [...shadow.querySelectorAll(".chip")];
   const countEl = shadow.querySelector("[data-count]");
   const pickBtn = shadow.querySelector('[data-act="pick"]');
   const copyBtn = shadow.querySelector('[data-act="copy"]');
@@ -82,6 +124,7 @@
   let copyBtnReset = null;
   let clearArmed = false;
   let clearArmReset = null;
+  let shortNudgeArmed = false;
 
   function flashCopy(label) {
     if (copyBtnReset) clearTimeout(copyBtnReset);
@@ -99,6 +142,41 @@
       clearTimeout(clearArmReset);
       clearArmReset = null;
     }
+  }
+
+  function selectedTags() {
+    return chipEls.filter((el) => el.classList.contains("on")).map((el) => el.dataset.tag);
+  }
+
+  function fieldValues() {
+    return {
+      problem: problemEl.value.trim(),
+      want: wantEl.value.trim(),
+      why: whyEl.value.trim()
+    };
+  }
+
+  function resetCommentForm() {
+    problemEl.value = "";
+    wantEl.value = "";
+    whyEl.value = "";
+    chipEls.forEach((el) => el.classList.remove("on"));
+    hintEl.textContent = "";
+    hintEl.classList.remove("show");
+    shortNudgeArmed = false;
+  }
+
+  function assembleComment(fields) {
+    const lines = [];
+    if (fields.problem) lines.push("Problem: " + fields.problem);
+    if (fields.want) lines.push("Want: " + fields.want);
+    if (fields.why) lines.push("Why: " + fields.why);
+    return lines.join("\n");
+  }
+
+  function showHint(text) {
+    hintEl.textContent = text;
+    hintEl.classList.toggle("show", Boolean(text));
   }
 
   function own(node) {
@@ -225,10 +303,10 @@
     box.style.display = "block";
     const width = 320;
     const left = Math.min(x, window.innerWidth - width - 12);
-    const top = Math.min(y + 8, window.innerHeight - 220);
+    const top = Math.min(y + 8, window.innerHeight - 360);
     box.style.left = Math.max(8, left) + "px";
     box.style.top = Math.max(8, top) + "px";
-    textarea.focus();
+    problemEl.focus();
   }
 
   function stopPicking() {
@@ -240,6 +318,7 @@
   function closeBox() {
     box.style.display = "none";
     current = null;
+    resetCommentForm();
   }
 
   function cancelUi() {
@@ -277,12 +356,20 @@
     event.stopPropagation();
     current = event.target;
     meta.textContent = cssPath(current);
-    textarea.value = "";
+    resetCommentForm();
     placeBox(event.clientX, event.clientY);
     stopPicking();
   }, true);
 
   shadow.addEventListener("click", async (event) => {
+    const tag = event.target?.dataset?.tag;
+    if (tag) {
+      event.target.classList.toggle("on");
+      showHint("");
+      shortNudgeArmed = false;
+      return;
+    }
+
     const act = event.target?.dataset?.act;
     if (act === "pick") {
       resetClearArm();
@@ -293,8 +380,31 @@
     }
     if (act === "cancel") closeBox();
     if (act === "save") {
-      const comment = textarea.value.trim();
-      if (!comment || !current) return;
+      if (!current) return;
+      const tags = selectedTags();
+      const fields = fieldValues();
+      const hasField = Boolean(fields.problem || fields.want || fields.why);
+      if (!hasField) {
+        showHint(tags.length
+          ? "Add a Problem, Want, or Why — tags alone aren’t enough."
+          : "Add a Problem, Want, or Why before saving.");
+        shortNudgeArmed = false;
+        return;
+      }
+
+      const shortProblemOnly =
+        fields.problem &&
+        fields.problem.length < SHORT_PROBLEM &&
+        !fields.want;
+      if (shortProblemOnly && !shortNudgeArmed) {
+        shortNudgeArmed = true;
+        showHint("Add what you Want, or click Add comment again.");
+        return;
+      }
+
+      const comment = assembleComment(fields);
+      if (!comment) return;
+
       try {
         const deviceId = await ensureDeviceId();
         const { items, batchId: existingBatch } = await loadPile();
@@ -311,6 +421,7 @@
           classes: [...current.classList].slice(0, 6).join(" "),
           html: snippet(current),
           comment,
+          tags,
           at: new Date().toISOString()
         };
         items.push(item);

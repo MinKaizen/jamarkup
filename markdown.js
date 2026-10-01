@@ -2,6 +2,9 @@ function toMarkdown(items, batchId) {
   if (!items.length) return "";
   const blocks = items.map((item, i) => {
     const html = item.html ? "\n```html\n" + item.html + "\n```" : "";
+    const tags = Array.isArray(item.tags) && item.tags.length
+      ? "- Tags: " + item.tags.join(", ")
+      : "";
     return [
       "### " + (i + 1) + ". " + item.comment.split("\n")[0].slice(0, 80),
       item.commentId ? "- Id: `" + item.commentId + "`" : "",
@@ -10,6 +13,7 @@ function toMarkdown(items, batchId) {
       item.landmark ? "- Section: " + item.landmark : "",
       item.text ? "- Visible text: " + JSON.stringify(item.text) : "",
       item.classes ? "- Classes: `" + item.classes + "`" : "",
+      tags,
       "- Change: " + item.comment,
       html
     ].filter(Boolean).join("\n");
