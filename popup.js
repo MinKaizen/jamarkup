@@ -8,8 +8,13 @@ document.getElementById("copy").addEventListener("click", async () => {
     status.textContent = "No comments yet.";
     return;
   }
-  await navigator.clipboard.writeText(toMarkdown(items));
-  status.textContent = "Copied " + items.length + " comment" + (items.length === 1 ? "" : "s") + ".";
+  try {
+    await navigator.clipboard.writeText(toMarkdown(items));
+    status.textContent = "Copied " + items.length + " comment" + (items.length === 1 ? "" : "s") + ".";
+  } catch (err) {
+    status.textContent = "Copy failed — clipboard permission denied or unavailable.";
+    console.warn("Jamarkup clipboard write failed", err);
+  }
 });
 
 document.getElementById("clear").addEventListener("click", async () => {

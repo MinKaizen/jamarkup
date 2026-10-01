@@ -193,8 +193,13 @@
         setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
         return;
       }
-      await navigator.clipboard.writeText(toMarkdown(items));
-      pickBtn.textContent = "Copied " + items.length;
+      try {
+        await navigator.clipboard.writeText(toMarkdown(items));
+        pickBtn.textContent = "Copied " + items.length;
+      } catch (err) {
+        pickBtn.textContent = "Copy failed";
+        console.warn("Jamarkup clipboard write failed", err);
+      }
       setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
     }
   });
