@@ -7,9 +7,17 @@ A Chrome extension for teammates. They click a section, write the change, and co
 1. Open `chrome://extensions`.
 2. Turn on Developer mode.
 3. Click Load unpacked and choose this folder.
-4. Open the site, click Comment, click the section, write the change, then Copy for AI.
+4. Pin Jamarkup in the toolbar.
 
-Pin the extension if you also want Copy all / Clear from the toolbar popup.
+## Usage
+
+1. Open the site you want to mark up.
+2. Click the Jamarkup extension icon to show the floating dock on that tab (click again to hide it).
+3. Click **Comment**, click a section, write the change, then **Add comment**.
+4. Use **Copy for AI** to put the markdown prompt on the clipboard.
+5. **Clear** asks for a second click (`Clear?`) before wiping saved comments.
+
+Escape cancels picking and closes the comment box. The dock is per-tab and stays off until you toggle it.
 
 ## What the AI receives
 
