@@ -10,10 +10,11 @@ When you save a comment, Jamarkup stores it in Chrome's local storage on that br
 - the page URL
 - a CSS selector for the element you clicked
 - the nearest heading, the visible text, the class names, and a short HTML snippet of that element
+- a per-comment id, a batch id for the current pile, and a local device id (created once in this browser profile)
 
 Nothing is uploaded. There is no account, no analytics, and no server. Jamarkup does not send page content, comments, or identifiers to the developer or to anyone else.
 
-Copying uses the clipboard on your machine. Clearing comments deletes them from local storage.
+Copying uses the clipboard on your machine. Clearing comments deletes the pile and its batch id from local storage; the device id stays so later piles can keep stable batch ids.
 
 ## Why it can run on every site
 

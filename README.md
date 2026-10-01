@@ -21,7 +21,7 @@ Escape cancels picking and closes the comment box. The dock is per-tab and stays
 
 ## What the AI receives
 
-Each comment includes the page URL, a CSS selector, the nearest heading, the visible text, class names, a short HTML snippet, and the requested change. The selector is a hint for the live page. The visible text and classes are what the model should use to find the source.
+Each comment includes a stable comment id, the page URL, a CSS selector, the nearest heading, the visible text, class names, a short HTML snippet, and the requested change. The copied markdown also includes a batch id for the current pile so re-copies of the same comments stay idempotent. Clear starts a new batch on the next save. The selector is a hint for the live page. The visible text and classes are what the model should use to find the source.
 
 ## Privacy
 

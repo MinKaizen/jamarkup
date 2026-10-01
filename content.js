@@ -3,6 +3,8 @@
   window.__siteCommentsForAi = true;
 
   const KEY = "siteCommentsForAi";
+  const DEVICE_KEY = "jamarkupDeviceId";
+  const BATCH_KEY = "jamarkupBatchId";
   const host = document.createElement("div");
   host.setAttribute("data-site-comments-root", "1");
   const shadow = host.attachShadow({ mode: "open" });
@@ -103,10 +105,54 @@
     return node === host || host.contains(node);
   }
 
+  function newUuid() {
+    return crypto.randomUUID();
+  }
+
+  async function ensureDeviceId() {
+    const data = await chrome.storage.local.get(DEVICE_KEY);
+    if (data[DEVICE_KEY]) return data[DEVICE_KEY];
+    const id = newUuid();
+    await chrome.storage.local.set({ [DEVICE_KEY]: id });
+    return id;
+  }
+
+  function makeBatchId(deviceId) {
+    return "jamarkup:" + deviceId + "-" + Date.now();
+  }
+
+  async function loadPile() {
+    const data = await chrome.storage.local.get([KEY, BATCH_KEY, DEVICE_KEY]);
+    let items = data[KEY] || [];
+    let batchId = data[BATCH_KEY] || null;
+    let dirty = false;
+
+    for (const item of items) {
+      if (!item.commentId) {
+        item.commentId = newUuid();
+        dirty = true;
+      }
+    }
+
+    if (items.length && !batchId) {
+      const deviceId = data[DEVICE_KEY] || await ensureDeviceId();
+      batchId = makeBatchId(deviceId);
+      dirty = true;
+    }
+
+    if (dirty) {
+      const patch = { [KEY]: items };
+      if (batchId) patch[BATCH_KEY] = batchId;
+      await chrome.storage.local.set(patch);
+    }
+
+    return { items, batchId };
+  }
+
   async function refreshCount() {
     try {
-      const data = await chrome.storage.local.get(KEY);
-      const n = (data[KEY] || []).length;
+      const { items } = await loadPile();
+      const n = items.length;
       countEl.textContent = n + " comment" + (n === 1 ? "" : "s");
     } catch (err) {
       // Extension context invalidated — ignore.
@@ -250,7 +296,14 @@
       const comment = textarea.value.trim();
       if (!comment || !current) return;
       try {
+        const deviceId = await ensureDeviceId();
+        const { items, batchId: existingBatch } = await loadPile();
+        let batchId = existingBatch;
+        if (!items.length || !batchId) {
+          batchId = makeBatchId(deviceId);
+        }
         const item = {
+          commentId: newUuid(),
           page: location.href,
           selector: cssPath(current),
           landmark: landmark(current),
@@ -260,10 +313,8 @@
           comment,
           at: new Date().toISOString()
         };
-        const data = await chrome.storage.local.get(KEY);
-        const items = data[KEY] || [];
         items.push(item);
-        await chrome.storage.local.set({ [KEY]: items });
+        await chrome.storage.local.set({ [KEY]: items, [BATCH_KEY]: batchId });
         closeBox();
         pickBtn.textContent = "Added " + items.length;
         setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
@@ -275,14 +326,13 @@
     if (act === "copy") {
       resetClearArm();
       try {
-        const data = await chrome.storage.local.get(KEY);
-        const items = data[KEY] || [];
+        const { items, batchId } = await loadPile();
         if (!items.length) {
           flashCopy("Nothing yet");
           return;
         }
         try {
-          await navigator.clipboard.writeText(toMarkdown(items));
+          await navigator.clipboard.writeText(toMarkdown(items, batchId));
           flashCopy("Copied " + items.length);
         } catch (err) {
           flashCopy("Copy failed");
@@ -304,6 +354,7 @@
       resetClearArm();
       try {
         await chrome.storage.local.set({ [KEY]: [] });
+        await chrome.storage.local.remove(BATCH_KEY);
         await refreshCount();
         clearBtn.textContent = "Cleared";
         setTimeout(() => { clearBtn.textContent = "Clear"; }, 1200);
