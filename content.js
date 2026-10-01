@@ -145,6 +145,30 @@
     pickBtn.textContent = "Comment";
   }
 
+  function closeBox() {
+    box.style.display = "none";
+    current = null;
+  }
+
+  function cancelUi() {
+    stopPicking();
+    closeBox();
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (!picking && box.style.display !== "block") return;
+    event.preventDefault();
+    cancelUi();
+  }, true);
+
+  document.addEventListener("mousedown", (event) => {
+    if (picking) return;
+    if (box.style.display !== "block") return;
+    if (own(event.target)) return;
+    closeBox();
+  }, true);
+
   document.addEventListener("mousemove", (event) => {
     if (!picking || own(event.target)) return;
     const rect = event.target.getBoundingClientRect();
@@ -174,7 +198,7 @@
       pickBtn.textContent = picking ? "Picking…" : "Comment";
       if (!picking) hl.style.display = "none";
     }
-    if (act === "cancel") box.style.display = "none";
+    if (act === "cancel") closeBox();
     if (act === "save") {
       const comment = textarea.value.trim();
       if (!comment || !current) return;
@@ -192,7 +216,7 @@
       const items = data[KEY] || [];
       items.push(item);
       await chrome.storage.local.set({ [KEY]: items });
-      box.style.display = "none";
+      closeBox();
       pickBtn.textContent = "Added " + items.length;
       setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
     }
