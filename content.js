@@ -60,8 +60,19 @@
   const meta = shadow.querySelector(".meta");
   const textarea = shadow.querySelector("textarea");
   const pickBtn = shadow.querySelector('[data-act="pick"]');
+  const copyBtn = shadow.querySelector('[data-act="copy"]');
   let picking = false;
   let current = null;
+  let copyBtnReset = null;
+
+  function flashCopy(label) {
+    if (copyBtnReset) clearTimeout(copyBtnReset);
+    copyBtn.textContent = label;
+    copyBtnReset = setTimeout(() => {
+      copyBtn.textContent = "Copy for AI";
+      copyBtnReset = null;
+    }, 1200);
+  }
 
   function own(node) {
     return node === host || host.contains(node);
@@ -189,18 +200,16 @@
       const data = await chrome.storage.local.get(KEY);
       const items = data[KEY] || [];
       if (!items.length) {
-        pickBtn.textContent = "Nothing yet";
-        setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
+        flashCopy("Nothing yet");
         return;
       }
       try {
         await navigator.clipboard.writeText(toMarkdown(items));
-        pickBtn.textContent = "Copied " + items.length;
+        flashCopy("Copied " + items.length);
       } catch (err) {
-        pickBtn.textContent = "Copy failed";
+        flashCopy("Copy failed");
         console.warn("Jamarkup clipboard write failed", err);
       }
-      setTimeout(() => { pickBtn.textContent = "Comment"; }, 1200);
     }
   });
 })();
