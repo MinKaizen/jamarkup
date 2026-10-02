@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
-# Build a distributable zip of tracked extension files (no .git).
+# Unix wrapper → node build.mjs (Mac / Linux)
 set -euo pipefail
 cd "$(dirname "$0")"
-
-mkdir -p dist
-OUT="dist/jamarkup.zip"
-rm -f "$OUT"
-
-# git archive only includes committed/tracked files — no .git, no untracked junk.
-# .DS_Store and dist/ are gitignored (and export-ignored) so they stay out.
-git archive --format=zip --output="$OUT" HEAD
-
-ABS="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
-echo "Wrote $ABS"
+exec node build.mjs
