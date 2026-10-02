@@ -1,2 +1,2 @@
 .DS_Store export-ignore
-dist/ export-ignore
+builds/ export-ignore

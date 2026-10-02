@@ -63,3 +63,7 @@ Privacy details: [PRIVACY.md](./PRIVACY.md).
 - Manifest V3; content scripts `markdown.js` + `content.js`; icon toggle via `background.js`.
 - Local storage keys include the comment pile, batch id, device id, and `jamarkupTourDismissed`.
 - Reload the extension on `chrome://extensions` after pulling changes.
+- Build a distributable zip (tracked files only, no `.git`):
+  - Mac / Linux: `./build` or `node build.mjs`
+  - Windows: `build.cmd` or `node build.mjs`
+  - Output: `builds/jamarkup.zip` (folder is gitignored)
