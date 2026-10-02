@@ -6,6 +6,61 @@ Repo: https://github.com/MinKaizen/jamarkup
 
 ---
 
+## Install manually
+
+You can load Jamarkup yourself in a few minutes — no coding and no AI helper required. Chrome calls this an “unpacked” extension: it just means the files live in a folder on your computer instead of coming from the Chrome Web Store.
+
+### 1. Get the Jamarkup folder
+
+You need the folder that contains a file named `manifest.json`. Pick whichever is easiest:
+
+- **From a zip someone shared:** unzip `builds/jamarkup.zip` (or any Jamarkup zip you were given). Open the unzipped folder and make sure you can see `manifest.json` inside it.
+- **From GitHub:** open the [Jamarkup repo](https://github.com/MinKaizen/jamarkup), click the green **Code** button → **Download ZIP**, then unzip it somewhere easy to find (for example your Desktop). Inside you’ll get a folder like `jamarkup-main` — that folder should contain `manifest.json`.
+
+Tip: if you open the folder and only see another nested folder, keep going until you find `manifest.json`. That’s the one Chrome needs.
+
+### 2. Open Chrome’s extensions page
+
+In Chrome, open a new tab and type this into the address bar, then press Enter:
+
+```
+chrome://extensions
+```
+
+(It’s a special Chrome page — you won’t find it on Google.)
+
+### 3. Turn on Developer mode
+
+Look for a **Developer mode** toggle (usually in the top-right of that page) and switch it **on**.
+
+What this means: Chrome is letting you load an extension from a folder you trust on your computer. It is not a “hacking mode” and it doesn’t change how you browse — it only unlocks the “Load unpacked” button.
+
+### 4. Load unpacked
+
+1. Click **Load unpacked**.
+2. In the file picker, select the Jamarkup folder that contains `manifest.json` (the folder itself, not the `manifest.json` file).
+3. Confirm Jamarkup appears in your extensions list.
+
+If Chrome complains about the folder, go back one level or one level deeper until you pick the folder that directly contains `manifest.json`.
+
+### 5. Pin Jamarkup
+
+1. Click the puzzle-piece **Extensions** icon in Chrome’s toolbar (top-right).
+2. Find **Jamarkup** and click the pin icon so it stays visible on the toolbar.
+
+### 6. First use
+
+1. Open any normal website (not a `chrome://` page and not the Chrome Web Store).
+2. Click the **Jamarkup** icon once. A floating dock should appear in the bottom-right.
+3. The first time, a short **Quick tour** card may appear. Click **Got it** so it never shows again, or **Remind me later** to hide it for now.
+4. Click **Comment** → click a section on the page → fill **Problem / Want / Why** (optional tag chips like Bug or Layout) → **Add comment**.
+5. Click **Copy for AI**, then paste into chat with a teammate or AI.
+6. Click the Jamarkup icon again anytime to hide the dock.
+
+That’s it — you’re set. Prefer a guided walkthrough instead? Use the AI setup section below.
+
+---
+
 ## Setup with your AI (copy everything below)
 
 Copy the block below and paste it into Cursor, ChatGPT, Claude, or another AI helper. It will walk you through installing Jamarkup even if you have never used Chrome Developer mode.
